@@ -1,14 +1,23 @@
 # Ichthus Controller
 
-**Ichthus Controller** is a ROS package that controls a real vehicle driven by servo motors. It assumes that throttle pedal, brake pedal, steering wheel, and even gearstick are controlled by servo motors, which are based on EtherCAT field bus. This way we do not have to connect the Automotive Electronics through CAN gateway. In our vehicle, we used 4 **Epos3 DC Servo Motors from Maxon Motor** for those control knobs, each of which is controlled by a motor drive that and the relavant motor drives  
+**Ichthus Controller** is a ROS package that controls a real vehicle driven by servo motors. It assumes that throttle pedal, brake pedal, steering wheel, and even gearstick are controlled by servo motors, which are based on EtherCAT field bus. This way we do not have to connect the Automotive Electronics through CAN gateway. In our vehicle, we use four **Epos3 DC Servo Motors from Maxon Motor** for those control knobs, each of which is attached to a motor drive controlling the current flowing into the motor. The next figures show how we attach the servo motor to the relavant component of our vehicle.
 
-Vehicle Controller used in Soongsil University's Ichthus vehicle for servo motor based vehicle control written in ROS node. This is a method of controlling the motor by attaching the **Epos3 DC Motor servo motor of Maxon Motor** to the vehicle's accelerator pedal, deceleration pedal, steering wheel, and gear stick, and the motor driver supplies current to the motor. Networking between motor drivers is required to control the motor, for this purpose, **EtherCAT,** an industrial real-time field bus is used.
+**Throttle Pedal**
+![pedal_motor](https://user-images.githubusercontent.com/40734644/88827049-6b4afc80-d204-11ea-9430-f495e1d1217d.png)
 
-**Pedal Motor**
+**Brake Pedal**
+![pedal_motor](https://user-images.githubusercontent.com/40734644/88827049-6b4afc80-d204-11ea-9430-f495e1d1217d.png)
+
+**Steering Wheel**
+![pedal_motor](https://user-images.githubusercontent.com/40734644/88827049-6b4afc80-d204-11ea-9430-f495e1d1217d.png)
+
+**Gearstick**
 ![pedal_motor](https://user-images.githubusercontent.com/40734644/88827049-6b4afc80-d204-11ea-9430-f495e1d1217d.png)
 
 **Motor Drive**
 ![motor_drive](https://user-images.githubusercontent.com/40734644/88827060-6e45ed00-d204-11ea-828d-f1888bb2dea6.png)
+
+**Ichthus Controller** consists of two ROS nodes: one is a ROS client that interacts between the end user and a ROS service, and the other is a ROS service that interfaces between the ROS client and the hardware. It provides low-level functions to control each motor in position mode and also high-level controllers such as cruise control (= speed control) and steering control. For cruise control, it requres measurement of real speed of the target vehicle, and for this purpose, we may use CAN gateway and OBD2.
 
 ## Overview
 - [Files](#files)
@@ -25,30 +34,30 @@ Vehicle Controller used in Soongsil University's Ichthus vehicle for servo motor
 **cfg**
 |File|Description|
 -------|--------
-|`ichthus_command.yaml`|command and macro definition|
-|`ichthus_i30.yaml`|state variable definition for i30 vehicle|
+|`ichthus_command.yaml`|command and macro definitions used by the ichthus controller client in the user terminal |
+|`ichthus_i30.yaml`|state variable definitions used by the ichthus controller server for our vehicle based on Hyundai i30|
 
 **msg**
 |File|Description|
 -------|--------
-|`can_msg.msg`|msg definition for CAN|
-|`obd_msg.msg`|msg definition for OBD|
+|`can_msg.msg`|message definition to interface with ROS node reading the current vehicle speed from CAN gateway|
+|`obd_msg.msg`|message definition to interface with ROS node reading the current vehicle speed from OBD|
 >You can add your message type here.
 
 
 **srv**
 |File|Description|
 -------|--------
-|`con_msg.srv`|msg definition for client - server service communication|
+|`con_msg.srv`|msg definition for client - server communication|
 
 **src**
 |File|Description|
 -------|--------
-|`ichthus_controller_client.cpp`|service client for command line interface|
-|`ichthus_controller_server_core.cpp`|service server, manage all state variables|
-|`ichthus_controller_server_node.cpp`|ichthus_controller node|
-|`controllers.cpp`|motion control, decide motor target position|
-|`ethercat.cpp`|manage motor drive and EtherCAT, communicate with motor drive |
+|`ichthus_controller_client.cpp`|source file of the client program|
+|`ichthus_controller_server_core.cpp`|source file of the server program that interprets client commands|
+|`ichthus_controller_server_node.cpp`|source file of the wrapper of the server program|
+|`controllers.cpp`|source file of high-level controllers such as cruise control and emergency stop|
+|`ethercat.cpp`|source file of low-level functions that controls the position of each motor|
 
 
 ## IgH EtherCAT Master Kernel Module Installation
@@ -60,10 +69,11 @@ Vehicle Controller used in Soongsil University's Ichthus vehicle for servo motor
 
 - **EtherCAT** guaranteeing the communication delay in microsecond unit.
 
-- **EtherCAT** bus has a **Master-Slave** structure, where the **PC** becomes the **Master** and the **Motor Driver** becomes the **Slave**. Only the Master node can initiate message transmission, and the Slave node transmits data only through piggybacking to the message initiated by the Mastser node
+- **EtherCAT** bus has a **Master-Slave** structure, where the **Main Computer** becomes the **Master** and a **Motor Drive** becomes a **Slave**. Only the master  can initiate message transmission, and the slaves transmit data only through piggybacking to the message initiated by the master.
 
 ### EtherCAT State Machine
-#### offical manual  : [EPOS3-EtherCAT-Firmware-Specification-En.pdf](https://www.maxongroup.com/medias/sys_master/root/8834322825246/EPOS3-EtherCAT-Firmware-Specification-En.pdf)
+
+In our server program, we have implemented a state machine that manages the lifecycle of EtherCAT field bus and individual motor drives. The states used are derived from the EtherCAT standard. You may refer to EPOS3-EtherCAT-Firmware-Specification-En.pdf.
 
 #### EtherCAT device state
 |State short name |State full name|
@@ -90,10 +100,8 @@ Vehicle Controller used in Soongsil University's Ichthus vehicle for servo motor
 #### EtherCAT state transition matrix
 ![EtherCAT State Transition Matrix](https://user-images.githubusercontent.com/40734644/88839865-99393c80-d216-11ea-8af2-7054cfc3e6bf.png)
 
+**In the state of Operation Enable, the server transmits every 10 ms a target position to each motor, maintained in a state variable, whether it is updated or not. Just in case, if we need to override the server control for manually driving the vehicle, e.g., to manually control the steering wheel, we simply turn the motor state from Operation Enable to Disable Operation, instead of shutting down all the motors and the EtherCAT field bus. Later, when we need to recover the server control, we simply turn the motor state from Disable Operation to Operation Enable.**
 
-
-
-**Using EtherCAT with stable state machine, Ichthus Controller transmits the target position of the Motor every 10ms  to the Slave to control the Motor. and, if it is not a physical problem, all motors always reach operation enable and normal state recovery is possible without unnecessary power on/off.**
 ## Client - Server Architecture using ROS Service
 Ichthus Controller operates in the **ROS Service**. Client sends a command to the Server in the form of ROS Service, Server performs the operation corresponding to the command.
 
@@ -245,11 +253,12 @@ macro_def13: [ "set steer_wheel_state 0" ]
 	#basic_fmt2: "^(set) ([a-zA-Z0-9_.]{1,40}) ([a-zA-Z0-9_.-]{1,19})$"
 	###comand  :	set      pedal_accel_pos      100
 
-## Motion Control
-Ichthus Controller has various **motion control functions** . The result of the motion control function is the **target position value of the motor**
+## High-level Controllers (Motion Control)
+Ichthus Controller has several **high-level controller functions**. They implement their own control logic and issue the target position(s) of one or more motors.
+
 |Motion|Description|
 -------|--------
-|`initial`|initial state of motion|
+|`initial`|initial state of high-level controller|
 |`standby`|after initializing, all motors are set at orig and waiting for transition to other motion|
 |`homing`|set accel pedal motor and decel pedal motor at lower position|
 |`estop`|set decel pedal motor at upper position|
@@ -281,10 +290,11 @@ Ichthus Controller has various **motion control functions** . The result of the 
 - `history`
 - `!(number)`
 
-> There are many macro for easy typing. **check ichthus_command.yaml**
-> You can add your own macro in this file
-> 
-### best way for cruise control
+> There are many macros to replace the basic commands. **check ichthus_command.yaml**
+> You can add your own macro to this file
+> The following steps are used commonly.
+
+### steps to activate the cruise control
 1. `roslaunch ichthus_controller ichthus_controller.launch`
 2. `up`
 3. `on`
@@ -292,7 +302,7 @@ Ichthus Controller has various **motion control functions** . The result of the 
 5. `cruise`
 6. `standby`
 
-### best way for self driving
+### steps to activate auto-driving (including both cruise control and steering control)
 1. `roslaunch ichthus_controller ichthus_controller.launch`
 2. `up`
 3. `on`
@@ -301,7 +311,7 @@ Ichthus Controller has various **motion control functions** . The result of the 
 6. `auto`
 7. `standby`
 
-### uninitializing EtherCAT and Motor Drive
+### steps to shutdown the EtherCAT field bus and all motor drives simultaneously
 - `set ecat_state 1` *(off)*
 - `set ecat_state 0` *(down)*
  
