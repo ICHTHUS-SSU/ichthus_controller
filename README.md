@@ -17,7 +17,7 @@
 **Motor Drive**
 ![motor_drive](https://user-images.githubusercontent.com/40734644/88827060-6e45ed00-d204-11ea-828d-f1888bb2dea6.png)
 
-**Ichthus Controller** consists of two ROS nodes: one is a ROS client that interacts between the end user and a ROS service, and the other is a ROS service that interfaces between the ROS client and the hardware. It provides low-level functions to control each motor in position mode and also high-level controllers such as cruise control (= speed control) and steering control. For cruise control, it requres measurement of real speed of the target vehicle, and for this purpose, we may use CAN gateway and OBD2.
+**Ichthus Controller** consists of two ROS nodes: one is a ROS client that interacts between the end user and a ROS service, and the other is a ROS service that interfaces between the ROS client and the hardware. It provides low-level functions to control each motor in position mode and also high-level controllers such as cruise control (= speed control) and steering control. For cruise control, it requres measurement of real speed of the target vehicle, and for this purpose, we may use CAN gateway or OBD2.
 
 ## Overview
 - [Files](#files)
@@ -100,7 +100,7 @@ In our server program, we have implemented a state machine that manages the life
 #### EtherCAT state transition matrix
 ![EtherCAT State Transition Matrix](https://user-images.githubusercontent.com/40734644/88839865-99393c80-d216-11ea-8af2-7054cfc3e6bf.png)
 
-**In the state of Operation Enable, the server transmits every 10 ms a target position to each motor, maintained in a state variable, whether it is updated or not. Just in case, if we need to override the server control for manually driving the vehicle, e.g., to manually control the steering wheel, we simply turn the motor state from Operation Enable to Disable Operation, instead of shutting down all the motors and the EtherCAT field bus. Later, when we need to recover the server control, we simply turn the motor state from Disable Operation to Operation Enable.**
+**In the state of Operation Enable, the server transmits every 10 ms a target position to each motor, maintained in a state variable, whether it is updated or not. Just in case, if we need to override the server control for manually driving the vehicle, e.g., to manually control the steering wheel, we simply turn the motor state from Operation Enable to Disable Operation only for the motor of the steering wheel, instead of shutting down all the motors and the EtherCAT field bus. Later, when we need to recover the server control, we simply turn the motor state from Disable Operation to Operation Enable without affacting the other motors in Operation Enable.**
 
 ## Client - Server Architecture using ROS Service
 Ichthus Controller operates in the **ROS Service**. Client sends a command to the Server in the form of ROS Service, Server performs the operation corresponding to the command.
