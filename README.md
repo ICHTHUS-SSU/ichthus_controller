@@ -1,6 +1,6 @@
 # Ichthus Controller
 
-**Ichthus Controller** is a Vehicle Controller used in Soongsil University's Ichthus vehicle for servo motor based vehicle control written in ROS node. This is a method of controlling the motor by attaching the **Epos3 DC Motor servo motor of Maxon Motor** to the vehicle's accelerator pedal, deceleration pedal, steering wheel, and gear stick, and the motor driver supplies current to the motor. Networking between motor drivers is required to control the motor, and for this purpose, **EtherCAT,** an industrial real-time field bus, is used.
+**Ichthus Controller** is a Vehicle Controller used in Soongsil University's Ichthus vehicle for servo motor based vehicle control written in ROS node. This is a method of controlling the motor by attaching the **Epos3 DC Motor servo motor of Maxon Motor** to the vehicle's accelerator pedal, deceleration pedal, steering wheel, and gear stick, and the motor driver supplies current to the motor. Networking between motor drivers is required to control the motor, for this purpose, **EtherCAT,** an industrial real-time field bus is used.
 
 **Pedal Motor**
 ![pedal_motor](https://user-images.githubusercontent.com/40734644/88827049-6b4afc80-d204-11ea-9430-f495e1d1217d.png)
@@ -17,6 +17,7 @@
 - [Command Line Interface](#command-line-interface)
 - [Motion Control](#motion-control)
 - [Usage](#usage)
+
 
 ## Files
 **cfg**
