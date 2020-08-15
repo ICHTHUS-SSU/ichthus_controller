@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>ichthus_controller</name>
+  <version>0.1.0</version>
+  <description>The ichthus controller package</description>
+  <maintainer email="kim.kanghee@gmail.com">Kanghee Kim</maintainer>
+  <license>Apache 2</license>
+
+  <buildtool_depend>autoware_build_flags</buildtool_depend>
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>message_generation</build_depend>
+
+  <depend>amathutils_lib</depend>
+  <depend>autoware_config_msgs</depend>
+  <depend>roscpp</depend>  
+  <depend>std_msgs</depend>
+  <depend>ichthus_can</depend>
+
+  <exec_depend>message_runtime</exec_depend>
+
+  <export></export>    <!-- additional information can be placed here -->
+</package>

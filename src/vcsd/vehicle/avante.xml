@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<ichthus>
+    <log>
+        <logfile>./log/180818@pullover.txt</logfile>
+    </log>
+    <actuator>
+        <maxonmajor>0x000000fb</maxonmajor>
+        <maxonminor>0x64400000</maxonminor>
+        <slavecnt>2</slavecnt>
+        <gearid>3</gearid>
+        <wheelid>2</wheelid>
+        <throttleid>0</throttleid>
+        <brakeid>1</brakeid>
+        <centerlidarid>4</centerlidarid>
+        <leftlidarid>5</leftlidarid>
+        <rightlidarid>6</rightlidarid>
+    </actuator>
+
+    <gearstick>
+        <modecnt>4</modecnt>
+        <PmodeIdx>0</PmodeIdx>
+        <RmodeIdx>1</RmodeIdx>
+        <NmodeIdx>2</NmodeIdx>
+        <DmodeIdx>3</DmodeIdx>
+        <PmodePos>0</PmodePos>
+        <RmodePos>-2000000</RmodePos>
+        <NmodePos>-3500000</NmodePos>
+        <DmodePos>-5000000</DmodePos>
+    </gearstick>
+
+    <steerwheel>
+        <leftmost>237478</leftmost>
+        <origin>0</origin>
+        <rightmost>-237478</rightmost>
+        <pospertick>58</pospertick>
+        <wheelbase>270</wheelbase>
+    </steerwheel>
+
+    <throttlepedal>
+        <lowerbound>0</lowerbound>
+        <upperbound>45000</upperbound>
+        <pospertick>100</pospertick>
+    </throttlepedal>
+
+    <brakepedal>
+        <lowerbound>0</lowerbound>
+        <upperbound>140000</upperbound>
+        <pospertick>60</pospertick>
+        <startpos>50000</startpos>
+    </brakepedal>
+
+    <clidar>
+        <modecnt>4</modecnt>
+        <HomingmodeIdx>0</HomingmodeIdx>
+        <DmodeIdx>1</DmodeIdx>
+        <PmodeIdx>2</PmodeIdx>
+        <MappingmodeIdx>3</MappingmodeIdx>
+        <HomingmodePos>0</HomingmodePos>
+        <DmodePos>-187506</DmodePos> 
+        <PmodePos>-232038</PmodePos> 
+        <MappingmodePos>-187506</MappingmodePos>
+    </clidar>
+
+    <llidar>
+        <modecnt>4</modecnt>
+        <HomingmodeIdx>0</HomingmodeIdx>
+        <DmodeIdx>1</DmodeIdx>
+        <PmodeIdx>2</PmodeIdx>
+        <MappingmodeIdx>3</MappingmodeIdx>
+        <HomingmodePos>0</HomingmodePos>
+        <DmodePos>138871</DmodePos> 
+        <PmodePos>209186</PmodePos> 
+        <MappingmodePos>138871</MappingmodePos>
+    </llidar>
+
+    <rlidar>
+        <modecnt>4</modecnt>
+        <HomingmodeIdx>0</HomingmodeIdx>
+        <DmodeIdx>1</DmodeIdx>
+        <PmodeIdx>2</PmodeIdx>
+        <MappingmodeIdx>3</MappingmodeIdx>
+        <HomingmodePos>0</HomingmodePos>
+        <DmodePos>-140629</DmodePos> 
+        <PmodePos>-210944</PmodePos> 
+        <MappingmodePos>-140629</MappingmodePos>
+    </rlidar>
+
+    <behaviorlayer>
+        <homing>
+            <margin>100</margin>
+        </homing>
+
+        <pullover>
+            <accel>-8</accel>
+            <margin>1</margin>
+        </pullover>
+
+        <cruisecontrol>
+            <accelpid>
+                <kp>600</kp>
+                <ki>25</ki>
+                <kd>300</kd>
+            </accelpid>
+            <decelpid>
+                <kp>3000</kp>
+                <ki>250</ki>
+                <kd>2000</kd>
+            </decelpid>
+            <velmarginplus>3</velmarginplus> 
+            <velmarginminus>3</velmarginminus> 
+            <velplusmargingain>100</velplusmargingain>
+            <velminusmargingain>50</velminusmargingain>
+            <tvelmin>0</tvelmin>
+            <tvelmax>100</tvelmax>
+            <Ierrbase0>0</Ierrbase0>
+            <Ierrbase1>30000</Ierrbase1>
+            <Ierrincr1>1000</Ierrincr1>
+        </cruisecontrol>
+
+    </behaviorlayer>
+</ichthus>

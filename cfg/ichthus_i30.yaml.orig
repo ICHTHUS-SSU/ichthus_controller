@@ -1,0 +1,58 @@
+enable_ecat : true
+enable_hvi : false
+enable_obd : false
+enable_can : false
+
+num_motors : 1
+motor_id_pedal_accel : 0
+motor_id_pedal_decel : 1
+motor_id_lidar_front : 2
+motor_id_lidar_left  : 3
+motor_id_lidar_right : 4
+motor_id_steer_wheel : 5
+motor_id_gear_stick  : 6
+
+pedal_accel_ppos_range : { min: 0, max: 33000 }
+pedal_accel_vpos_range : { min: 0, max: 100 }
+pedal_accel_ppos_start : 0
+
+pedal_decel_ppos_range : { min: 0, max: 110000 }
+pedal_decel_vpos_range : { min: 0, max: 100 }
+pedal_decel_ppos_start : 25000
+
+steer_wheel_ppos_range : { min: -228000, max: 228000 }
+steer_wheel_vpos_range : { min: -450, max: 450 }
+steer_wheel_ppos_start : 0
+
+gear_stick_ppos_range  : { park: 0, reverse: 1100000, neutral: 1900000, drive: 2450000 }
+
+lidar_pos_per_degree : 2343
+lidar_front_deg_range : { min: 0, max: 150 }
+lidar_left_deg_range  : { min: 0, max: 150 }
+lidar_right_deg_range : { min: -150, max: 0 }
+
+motion_pull_over     : { jerk: -1, pos_per_tick: 500, error_margin : 1 }
+motion_pedal_homing  : { margin: 100 }
+motion_pedal_testing : { accel_pos_per_tick: 100, decel_pos_per_tick: 100 }
+motion_lidar_homing  : { front: 0, left: 0, right: 0 }
+motion_lidar_mapping : { front: 90, left: 53, right: -48 }
+motion_lidar_driving : { front: 90, left: 53, right: -48 }
+motion_lidar_parking : { front: 90, left: 20, right: -28 }
+
+cc_gains_accel_obd : { Kp:  600, Ki:  25, Kd:  300 }
+cc_gains_decel_obd : { Kp: 3000, Ki: 200, Kd: 1000 }
+cc_gains_accel_can : { Kp: 3000, Ki:   7, Kd:  300 }
+cc_gains_decel_can : { Kp: 5000, Ki:   2, Kd:  500 }
+
+cc_switch_margins  : { lower: 50, upper: 120 }
+cc_target_velocity : { min: -2, max: 100 }
+cc_integral_base   : { init: 5000, incr: 1000 }
+
+sc_vehicle_min_radius : 517
+sc_vehicle_wheel_base : 265
+sc_pos_per_degree     : 949
+
+hvi_estop_btn_gpios : { in: 26, out_c: 17, out_l: 27, out_r: 22 }
+hvi_estop_rcv_gpios : { run: 5, pause: 6 }
+hvi_buzzer_gpios    : { front: 12, rear: 16 }
+hvi_signtower_gpios : { red_l: 18, green_l: 23, red_r: 24, green_r: 25 }

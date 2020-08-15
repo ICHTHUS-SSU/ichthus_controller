@@ -1,0 +1,52 @@
+num_motors : 3
+motor_id_pedal_accel : 0
+motor_id_pedal_decel : 1
+motor_id_steer_wheel : 2
+motor_id_gear_stick  : 3
+motor_id_lidar_front : 4
+motor_id_lidar_left  : 5
+motor_id_lidar_right : 6
+
+
+pedal_accel_pos : { lower: 0, upper: 33000, origin: 0 }
+pedal_decel_pos : { lower: 0, upper: 110000, origin: 23000 }
+steer_wheel_pos : { lower: -225000, upper: 225000, origin: 0 }   
+gear_stick_pos  : { lower: 0, upper: 2450000, origin: 0 } # lower = park, upper = drive
+#gear_stick_pos  : { park: 0, reverse: 1100000, neutral: 1900000, drive: 2450000 }
+lidar_front_pos : { lower: 0, upper: 351450, origin: 0 }
+lidar_left_pos  : { lower: 0, upper: 351450, origin: 0 }
+lidar_right_pos : { lower: 0, upper: 351450, origin: 0 }
+
+pedal_accel_vpos : { lower: 0, upper: 100 } # origin to be calculated from pedal_accel_pos/origin !!!!!!!!!!(upper 1000??????)
+pedal_decel_vpos : { lower: 0, upper: 100 } # origin to be calculated from pedal_decel_pos/origin
+steer_wheel_vpos : { lower: -4500, upper: 4500 } # origin to be calculated from steer_wheel_pos/origin
+gear_stick_vpos  : { lower: 0, upper: 100 } # origin to be calculated from gear_stick_pos/origin
+lidar_front_vpos : { lower: 0, upper: 150 } # origin to be calculated from lidar_front_pos/origin
+lidar_left_vpos  : { lower: 0, upper: 150 } # origin to be calculated from lidar_left_pos/origin
+lidar_right_vpos : { lower: 0, upper: 150 } # origin to be calculated from lidar_right_pos/origin
+
+pedal_accel_apos : { step: 990 } # used as margin to check if apos is within (pos-margin, pos+margin)
+pedal_decel_apos : { step: 3300 } # used as margin to check if apos is within (pos-margin, pos+margin)
+steer_wheel_apos : { step: 500} # used as margin to check if apos is within (pos-margin, pos+margin)
+gear_stick_apos  : { step: 24500 } # used as margin to check if apos is within (pos-margin, pos+margin)
+lidar_front_apos : { step: 100 } # used as margin to check if apos is within (pos-margin, pos+margin)
+lidar_left_apos  : { step: 100 } # used as margin to check if apos is within (pos-margin, pos+margin)
+lidar_right_apos : { step: 100 } # used as margin to check if apos is within (pos-margin, pos+margin)
+
+motion_pull_over   : { step: 250, jerk: -0.2 }
+
+cc_gains_accel_obd : { Kp:  600, Ki:  25, Kd:  300 }
+cc_gains_decel_obd : { Kp: 3000, Ki: 200, Kd: 1000 }
+cc_gains_accel_can : { Kp: 1300, Ki:   6, Kd:  300 } #orig 1400 5 300
+cc_gains_decel_can : { Kp: 2000, Ki:   4, Kd:  500 } #orig 2500 2 600
+cc_switch_margins  : { lower: 30, upper: 100 } #orig 40 120
+cc_target_velocity : { lower: -2, upper: 100 }
+cc_integral_base   : { origin: 5000, step: 1000 }
+sc_vehicle_geometry : { min_radius : 5.30, wheel_base: 2.65, pos_per_deg: 861 }
+
+
+motion_pedal_testing : { ac_step: 100, de_step: 100 }
+motion_lidar_homing  : { left: 0, right: 0, front: 0 }
+motion_lidar_mapping : { left: 53, right: -48, front: 90 }
+motion_lidar_driving : { left: 53, right: -48, front: 90 }
+motion_lidar_parking : { left: 20, right: -28, front: 90 }

@@ -1,0 +1,103 @@
+
+basic_fmt0: "^(get) ([a-zA-Z0-9_.]{1,40})$"                        # e.g., get var 
+basic_fmt1: "^(get) ([a-zA-Z0-9_.]{1,40}) ([a-zA-Z0-9_]{1,40})$"   # e.g., get var timestamp
+basic_fmt2: "^(set) ([a-zA-Z0-9_.]{1,40}) ([a-zA-Z0-9_.-]{1,19})$" # e.g., set var -123.456
+basic_fmt3: "^(help)$"
+basic_fmt4: "^(quit)$"
+basic_fmt5: "^(history)$"
+basic_fmt6: "^(!)([0-9]{1,3})$"
+
+macro_fmt0: "^(h)$"
+macro_def0: [ "history" ]
+macro_fmt1: "^(show)$"   # show all variables
+macro_def1: [ "get varlist all" ]
+macro_fmt2: "^(state)$"  # show all motors' state
+macro_def2: [ "get motion_state", "get ecat_state", "get pedal_accel_state", "get pedal_decel_state", "get steer_wheel_state", "get gear_stick_state", "get lidar_front_state", "get lidar_left_state", "get lidar_right_state" ]
+macro_fmt3: "^(pos)$"    # show all motors' physical target position
+macro_def3: [ "get pedal_accel_pos", "get pedal_decel_pos", "get steer_wheel_pos", "get gear_stick_pos", "get lidar_front_pos", "get lidar_left_pos", "get lidar_right_pos" ]
+macro_fmt4: "^(vpos)$"    # show all motors' virtual target position
+macro_def4: [ "get pedal_accel_vpos", "get pedal_decel_vpos", "get steer_wheel_vpos", "get gear_stick_vpos", "get lidar_front_vpos", "get lidar_left_vpos", "get lidar_right_vpos" ]
+macro_fmt5: "^(apos)$"    # show all motors' physical actual position
+macro_def5: [ "get pedal_accel_apos", "get pedal_decel_apos", "get steer_wheel_apos", "get gear_stick_apos", "get lidar_front_apos", "get lidar_left_apos", "get lidar_right_apos" ]
+
+macro_fmt6: "^(up)$"   # ecat up
+macro_def6: [ "set ecat_state 1" ]
+macro_fmt7: "^(on)$"   # ecat on
+macro_def7: [ "set ecat_state 2" ]
+macro_fmt8: "^(off)$"  # ecat off
+macro_def8: [ "set ecat_state 1" ]
+macro_fmt9: "^(down)$" # ecat down
+macro_def9: [ "set ecat_state 0" ]
+
+macro_fmt10: "^(act)$" # activate motor
+macro_def10: [ "set steer_wheel_state 1" ]
+macro_fmt11: "^(en)$"  # enable motor
+macro_def11: [ "set steer_wheel_state 2" ]
+macro_fmt12: "^(dis)$" # disable motor
+macro_def12: [ "set steer_wheel_state 1" ]
+macro_fmt13: "^(de)$"  # deactivate motor
+macro_def13: [ "set steer_wheel_state 0" ]
+
+macro_fmt14: "^(aa)$" # test homing
+macro_def14: [ "set pedal_decel_pos 10000" ]
+macro_fmt15: "^(bb)$" # test moving
+macro_def15: [ "set pedal_decel_pos 0" ]
+macro_fmt16: "^(xx)$" # test moving in vpos
+macro_def16: [ "set pedal_decel_vpos 20" ]
+macro_fmt17: "^(yy)$" # test moving in vpos
+macro_def17: [ "set pedal_decel_vpos 0" ]
+
+macro_fmt18: "^(standby)$" # standby
+macro_def18: [ "set motion_state 1" ]
+macro_fmt19: "^(home)$"    # homing-pedals
+macro_def19: [ "set motion_state 2" ]
+macro_fmt20: "^(estop)$"   # estop
+macro_def20: [ "set motion_state 3" ]
+macro_fmt21: "^(cal)$"     # calibrating steer-wheel
+macro_def21: [ "set motion_state 4" ]
+macro_fmt22: "^(pull)$"    # pull-over
+macro_def22: [ "set motion_state 5" ]
+macro_fmt23: "^(self)$"   # selftest
+macro_def23: [ "set motion_state 6" ]
+macro_fmt24: "^(cruise)$"  # cruise-control
+macro_def24: [ "set motion_state 7"]
+macro_fmt25: "^(auto)$"    # automated-driving
+macro_def25: [ "set motion_state 8"]
+macro_fmt26: "^(avc)$"     # avc-driving
+macro_def26: [ "set motion_state 9"]
+
+
+macro_fmt27: "^(nn)$" # non update velocity
+macro_def27: ["set velocity_update 0"]
+macro_fmt28: "^(uu)$" # update velocity
+macro_def28: ["set velocity_update 1"]
+
+macro_fmt29: "^(10)$"
+macro_def29: ["set cc_target_velocity 10"]
+macro_fmt30: "^(20)$"
+macro_def30: ["set cc_target_velocity 20"]
+macro_fmt31: "^(30)$"
+macro_def31: ["set cc_target_velocity 30"]
+macro_fmt32: "^(40)$"
+macro_def32: ["set cc_target_velocity 40"]
+macro_fmt33: "^(50)$"
+macro_def33: ["set cc_target_velocity 50"]
+macro_fmt34: "^(60)$"
+macro_def34: ["set cc_target_velocity 60"]
+macro_fmt35: "^(70)$"
+macro_def35: ["set cc_target_velocity 70"]
+macro_fmt36: "^(80)$"
+macro_def36: ["set cc_target_velocity 80"]
+macro_fmt37: "^(90)$"
+macro_def37: ["set cc_target_velocity 90"]
+macro_fmt38: "^(100)$"
+macro_def38: ["set cc_target_velocity 100"]
+macro_fmt39: "^(0)$"
+macro_def39: ["set cc_target_velocity 0"]
+
+
+
+
+
+
+

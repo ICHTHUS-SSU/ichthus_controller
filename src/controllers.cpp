@@ -1,0 +1,1085 @@
+#include "ichthus_controller/ichthus_controller.h"
+
+namespace ichthus_controller
+{
+
+#define MAX_STEER_WHEEL_ANGLE_FROM_CAN 4680
+#define STEERING_WHEEL_CALIBRATE_THRESHOLD 5
+#define MAXIMUM_VELOCITY_UPDATE_COUNT 5
+
+  bool receiving_from_can_gateway = false;
+  bool motion_in_progress = false;
+
+  void reset_cruise_control(void);
+  extern string motor_id_to_vpos_name(int motor_id);
+  extern string motor_id_to_pos_name(int motor_id);
+  extern string motor_id_to_apos_name(int motor_id);
+  extern bool get_state_var_timestamp(string name, int &timestamp);
+  extern bool get_state_var_lower(string name, double &value);
+  extern bool get_state_var_upper(string name, double &value);
+  extern bool get_state_var_origin(string name, double &value);
+  extern bool get_state_var_step(string name, double &value);
+  extern bool get_state_var_value(string name, double &value);
+  extern bool does_state_var_reach_goal(string name, double ref);
+
+  extern bool update_vehicle_velocity;
+
+  inline bool is_equal(double x, double y)
+  {
+    const double epsilon = 1e-5;           // some small number such as 1e-5
+    return abs(x - y) <= epsilon * abs(x); // see Knuth section 4.2.2 pages 217-218
+  }
+
+  inline double rad2deg(double angle)
+  {
+    return angle * 180.0 / M_PI;
+  }
+
+  inline double deg2rad(double angle)
+  {
+    return angle / 180.0 * M_PI;
+  }
+
+  inline double mps2kmph(double mpsval)
+  {
+    return (mpsval * 3.6);
+  }
+
+  inline double kmph2mps(double kmphval)
+  {
+    return (kmphval * 1000.0 / 60.0 / 60.0);
+  }
+
+  // assuming that all the position variables are correctly created,
+  // we do not check the return value of get/set_state_var.
+
+  bool does_motor_var_reach_goal(int motor_id)
+  {
+    string name;
+    double pos;
+
+    name = motor_id_to_pos_name(motor_id);
+    get_state_var_value(name, pos); // physical position
+
+    name = motor_id_to_apos_name(motor_id);
+    return does_state_var_reach_goal(name, pos); // actual position
+  }
+
+  bool does_pedal_accel_reach_goal(void)
+  {
+    return does_motor_var_reach_goal(motor_id_pedal_accel);
+  }
+
+  bool does_pedal_decel_reach_goal(void)
+  {
+    return does_motor_var_reach_goal(motor_id_pedal_decel);
+  }
+
+  bool does_steer_wheel_reach_goal(void)
+  {
+    return does_motor_var_reach_goal(motor_id_steer_wheel);
+  }
+
+  bool does_gear_stick_reach_goal(void)
+  {
+    return does_motor_var_reach_goal(motor_id_gear_stick);
+  }
+
+  bool does_lidar_front_reach_goal(void)
+  {
+    return does_motor_var_reach_goal(motor_id_lidar_front);
+  }
+
+  bool does_lidar_left_reach_goal(void)
+  {
+    return does_motor_var_reach_goal(motor_id_lidar_left);
+  }
+
+  bool does_lidar_right_reach_goal(void)
+  {
+    return does_motor_var_reach_goal(motor_id_lidar_right);
+  }
+
+  bool does_pedals_reach_goal(void)
+  {
+    return (does_motor_var_reach_goal(motor_id_pedal_decel) && does_motor_var_reach_goal(motor_id_pedal_accel));
+  }
+
+  bool does_motor_var_reach_upper(int motor_id)
+  {
+    string name;
+    double pos;
+
+    name = motor_id_to_pos_name(motor_id);
+    get_state_var_upper(name, pos); // physical upper position
+
+    name = motor_id_to_apos_name(motor_id);
+    return does_state_var_reach_goal(name, pos); // actual position
+  }
+
+  bool does_pedal_accel_reach_upper(void)
+  {
+    return does_motor_var_reach_upper(motor_id_pedal_accel);
+  }
+
+  bool does_pedal_decel_reach_upper(void)
+  {
+    return does_motor_var_reach_upper(motor_id_pedal_decel);
+  }
+
+  bool does_steer_wheel_reach_upper(void)
+  {
+    return does_motor_var_reach_upper(motor_id_steer_wheel);
+  }
+
+  bool does_gear_stick_reach_upper(void)
+  {
+    return does_motor_var_reach_upper(motor_id_gear_stick);
+  }
+
+  bool does_lidar_front_reach_upper(void)
+  {
+    return does_motor_var_reach_upper(motor_id_lidar_front);
+  }
+
+  bool does_lidar_left_reach_upper(void)
+  {
+    return does_motor_var_reach_upper(motor_id_lidar_left);
+  }
+
+  bool does_lidar_right_reach_upper(void)
+  {
+    return does_motor_var_reach_upper(motor_id_lidar_right);
+  }
+
+  bool does_motor_var_reach_lower(int motor_id)
+  {
+    string name;
+    double pos;
+
+    name = motor_id_to_pos_name(motor_id);
+    get_state_var_lower(name, pos); // physical lower position
+
+    name = motor_id_to_apos_name(motor_id);
+    return does_state_var_reach_goal(name, pos); // actual position
+  }
+
+  bool does_pedal_accel_reach_lower(void)
+  {
+    return does_motor_var_reach_lower(motor_id_pedal_accel);
+  }
+
+  bool does_pedal_decel_reach_lower(void)
+  {
+    return does_motor_var_reach_lower(motor_id_pedal_decel);
+  }
+
+  bool does_steer_wheel_reach_lower(void)
+  {
+    return does_motor_var_reach_lower(motor_id_steer_wheel);
+  }
+
+  bool does_gear_stick_reach_lower(void)
+  {
+    return does_motor_var_reach_lower(motor_id_gear_stick);
+  }
+
+  bool does_lidar_front_reach_lower(void)
+  {
+    return does_motor_var_reach_lower(motor_id_lidar_front);
+  }
+
+  bool does_lidar_left_reach_lower(void)
+  {
+    return does_motor_var_reach_lower(motor_id_lidar_left);
+  }
+
+  bool does_lidar_right_reach_lower(void)
+  {
+    return does_motor_var_reach_lower(motor_id_lidar_right);
+  }
+
+  bool get_accel_gains(double &kp, double &ki, double &kd)
+  {
+    state_var var;
+    bool ret;
+    if (receiving_from_can_gateway)
+    {
+      ret = get_state_var("cc_gains_accel_can", var);
+      kp = var._Kp;
+      ki = var._Ki;
+      kd = var._Kd;
+    }
+    else
+    {
+      ret = get_state_var("cc_gains_accel_obd", var);
+      kp = var._Kp;
+      ki = var._Ki;
+      kd = var._Kd;
+    }
+    return ret;
+  }
+
+  bool get_decel_gains(double &kp, double &ki, double &kd)
+  {
+    state_var var;
+    bool ret;
+    if (receiving_from_can_gateway)
+    {
+      ret = get_state_var("cc_gains_decel_can", var);
+      kp = var._Kp;
+      ki = var._Ki;
+      kd = var._Kd;
+    }
+    else
+    {
+      ret = get_state_var("cc_gains_decel_obd", var);
+      kp = var._Kp;
+      ki = var._Ki;
+      kd = var._Kd;
+    }
+    return ret;
+  }
+
+  bool get_vehicle_velocity_timestamp(int &timestamp)
+  {
+    state_var var;
+    bool ret;
+
+    if (receiving_from_can_gateway)
+    {
+      ret = get_state_var("vehicle_velocity_can", var);
+      timestamp = var.timestamp;
+    }
+
+    else
+    {
+      ret = get_state_var("vehicle_velocity_obd", var);
+      timestamp = var.timestamp;
+    }
+
+    return ret;
+  }
+
+  bool get_vehicle_velocity(double &value, int &timestamp)
+  {
+    state_var var;
+    bool ret;
+
+    if (receiving_from_can_gateway)
+    {
+      ret = get_state_var("vehicle_velocity_can", var);
+      value = var.value;
+      timestamp = var.timestamp;
+    }
+
+    else
+    {
+      ret = get_state_var("vehicle_velocity_obd", var);
+      value = var.value;
+      timestamp = var.timestamp;
+    }
+
+    return ret;
+  }
+
+  bool get_cc_switch_margins(double &p_margin, double &n_margin)
+  {
+    state_var var;
+    bool ret;
+
+    ret = get_state_var("cc_switch_margins", var);
+    p_margin = var.upper;
+    n_margin = var.lower;
+    return ret;
+  }
+
+  bool get_cc_integral_base(double &base, double &step)
+  {
+    state_var var;
+    bool ret;
+    if (receiving_from_can_gateway)
+    {
+      ret = true;
+      base = 0;
+      step = 0;
+    }
+    else
+    {
+      ret = get_state_var("cc_integral_base", var);
+      base = var.origin;
+      step = var.step;
+    }
+    return ret;
+  }
+  /////////////////////////////////////////////////////////////////
+  // Controllers generating single positions
+  /////////////////////////////////////////////////////////////////
+  void stand_by(void)
+  {
+    string name;
+    double value;
+
+    // origin position is not necessarily equal to lower bound, e.g., steer_wheel.
+    for (int i = 0; i < num_motors; i++)
+    {
+      name = motor_id_to_vpos_name(i);
+      get_state_var_origin(name, value);
+      set_state_var(name, value);
+    }
+
+    reset_cruise_control();
+  }
+
+  void homing_pedal_accel(void)
+  {
+    string name;
+    double value;
+    name = motor_id_to_vpos_name(motor_id_pedal_accel);
+    get_state_var_lower(name, value);
+    set_state_var(name, value);
+  }
+
+  void homing_pedal_decel(void)
+  {
+    string name;
+    double value;
+    name = motor_id_to_vpos_name(motor_id_pedal_decel);
+    get_state_var_lower(name, value);
+    set_state_var(name, value);
+  }
+
+  void homing_pedals(void)
+  {
+    homing_pedal_accel();
+    homing_pedal_decel();
+  }
+
+  void move_pedal_accel(double vpos)
+  {
+    string name;
+    if (!does_pedal_decel_reach_lower())
+      homing_pedal_decel();
+    name = motor_id_to_vpos_name(motor_id_pedal_accel);
+    set_state_var(name, vpos);
+  }
+
+  void move_pedal_decel(double vpos)
+  { // vpos should be positive!!!
+    string name;
+    double origin;
+    if (!does_pedal_accel_reach_lower())
+      homing_pedal_accel();
+    name = motor_id_to_vpos_name(motor_id_pedal_decel);
+    get_state_var_origin(name, origin);
+    set_state_var(name, origin + vpos);
+  }
+
+  void emergency_stop(void)
+  {
+    string name;
+    double vpos;
+
+    homing_pedal_accel();
+
+    name = motor_id_to_vpos_name(motor_id_pedal_decel);
+    get_state_var_upper(name, vpos);
+    set_state_var(name, vpos);
+  }
+
+  bool check_trial_count(int &trial)
+  {
+    if (trial > MAXIMUM_VELOCITY_UPDATE_COUNT)
+    {
+      cout << "velocity is not updated!!" << endl;
+      trial = 0;
+      return false;
+    }
+
+    return true;
+  }
+
+  bool does_steer_wheel_calibrate(void)
+  {
+    double value;
+    get_state_var_value("vehicle_steering_wheel_angle_can", value);
+
+    if (abs(value) <= 3)
+      return true;
+    else
+      return false;
+  }
+
+  double steer_wheel_adjust_offset = 0;
+
+  bool calibrate_steer_wheel(void)
+  {
+    static int state = 0;
+    static int trial = 0;
+
+    ///add this because of some bug///
+    trial++;
+    if (trial < 10)
+      return false;
+
+    trial = 0;
+    ////////////////////////////////
+
+    if (state == 0)
+    {
+      state_var var;
+      string name;
+      double can_angle_value;
+      name = motor_id_to_vpos_name(motor_id_steer_wheel);
+      get_state_var(name, var);
+      get_state_var_value("vehicle_steering_wheel_angle_can", can_angle_value);
+
+      if (receiving_from_can_gateway)
+        steer_wheel_adjust_offset = var.value - (var.upper * can_angle_value / MAX_STEER_WHEEL_ANGLE_FROM_CAN);
+      else
+        steer_wheel_adjust_offset = 0;
+
+      set_state_var(name, var.origin + steer_wheel_adjust_offset);
+
+      if (receiving_from_can_gateway)
+      {
+        state = 1;
+        return false;
+      }
+
+      return true;
+    }
+
+    else if (state == 1)
+    {
+      if (does_steer_wheel_reach_goal())
+        state = 2;
+      return false;
+    }
+
+    else if (state == 2)
+    {
+      state = 0;
+      if (does_steer_wheel_calibrate())
+        return true;
+      //state = 1;
+      return false;
+    }
+
+    cout << "calibrate : unknown state" << endl;
+    return false;
+  }
+
+  void move_steer_wheel(double vpos)
+  {
+    string name;
+    name = motor_id_to_vpos_name(motor_id_steer_wheel);
+
+    if (receiving_from_can_gateway)
+      set_state_var(name, vpos + steer_wheel_adjust_offset);
+    else
+      set_state_var(name, vpos);
+  }
+
+  enum gear_stick_level
+  {
+    GS_PARK,
+    GS_DRIVE
+  };
+
+  void move_gear_stick_to_level(gear_stick_level level)
+  {
+    string name;
+    double vpos;
+    name = motor_id_to_vpos_name(motor_id_gear_stick);
+
+    if (level == GS_PARK)
+      get_state_var_lower(name, vpos); // lower value means 'park' position
+    else if (level == GS_DRIVE)
+      get_state_var_upper(name, vpos); // upper value means 'drive' position
+
+    set_state_var(name, vpos); // virtual position
+  }
+
+  void move_gear_stick_to_park()
+  {
+    move_gear_stick_to_level(GS_PARK);
+  }
+
+  void move_gear_stick_to_drive()
+  {
+    move_gear_stick_to_level(GS_DRIVE);
+  }
+
+  /////////////////////////////////////////////////////////////////
+  // Controllers generating a sequence of positions
+  /////////////////////////////////////////////////////////////////
+  double pull_over_jerk;
+  double pull_over_step;
+  double pull_over_vpos_off;
+  double pull_over_ini_vel;
+
+  struct timespec pull_over_start_time;
+  struct timespec pull_over_end_time;
+  struct timespec pull_over_opt_time;
+
+#define NSEC_PER_SEC 1000000000L
+#define TIMESPECDIFF_SEC(end, start) ((uint64_t)(end).tv_sec - (uint64_t)(start).tv_sec) * NSEC_PER_SEC
+#define TIMESPECDIFF_NSEC(end, start) (uint64_t)(end).tv_nsec - (uint64_t)(start).tv_nsec
+
+  double pull_over_vpos_offset(void)
+  {
+    double time_diff;
+    double opt_vel;
+    double cur_vel;
+    int timestamp;
+    //homing_pedal_accel();
+    clock_gettime(CLOCK_REALTIME, &pull_over_opt_time);
+    // get the current vehicle velocity
+    get_vehicle_velocity(cur_vel, timestamp);
+    cur_vel = kmph2mps(cur_vel);
+
+    // calculate position offset for pull-over motion
+
+    time_diff = (TIMESPECDIFF_SEC(pull_over_opt_time, pull_over_start_time)) +
+                (TIMESPECDIFF_NSEC(pull_over_opt_time, pull_over_start_time));
+    time_diff = (time_diff) / NSEC_PER_SEC;
+
+    opt_vel = (pull_over_jerk * time_diff * time_diff) + pull_over_ini_vel;
+    pull_over_vpos_off =
+        (opt_vel >= cur_vel ? pull_over_vpos_off : pull_over_vpos_off + pull_over_step);
+
+    cout << "<debug> time diff : " << time_diff << endl;
+    cout << "<debug> vel diff : " << opt_vel - cur_vel << endl;
+    cout << "<debug> jerk : " << pull_over_jerk << endl;
+
+    return pull_over_vpos_off;
+  }
+
+  bool pull_over(void)
+  {
+    static int prev_velo_timestamp = 0;
+    static int state = 0;
+    static int trial = 0;
+
+    double took_time;
+    int timestamp;
+
+    get_vehicle_velocity_timestamp(timestamp);
+
+    if (prev_velo_timestamp == timestamp) 
+    {
+      trial++;
+      if(trial > MAXIMUM_VELOCITY_UPDATE_COUNT)
+      {
+        cout<<"velocity is not updated pull over exit!"<<endl;
+        return true;
+      }
+      return false;
+    }
+
+    trial = 0;
+    prev_velo_timestamp = timestamp;
+
+    if (state == 0)
+    { // initial state
+      double pedal_step;
+      state_var motion;
+      int timestamp;
+
+      if (does_pedal_decel_reach_upper())
+        return true;
+
+      state = 1;
+
+      clock_gettime(CLOCK_REALTIME, &pull_over_start_time);
+
+      homing_pedal_accel();
+
+      get_state_var("motion_pull_over", motion);
+      pull_over_jerk = motion.origin;
+
+      get_state_var_step("pedal_decel_pos", pedal_step);
+      pull_over_step = motion.step / pedal_step; // normalize the step size
+
+      pull_over_vpos_off = 0;
+      get_vehicle_velocity(pull_over_ini_vel, timestamp);
+      pull_over_ini_vel = kmph2mps(pull_over_ini_vel);
+    }
+
+    // state == 1 : pull-over in progress
+    if (!does_pedal_decel_reach_upper())
+    {
+      double origin, new_vpos;
+      get_state_var_origin("pedal_decel_vpos", origin);
+      new_vpos = origin + pull_over_vpos_offset();
+      set_state_var("pedal_decel_vpos", new_vpos);
+      return false;
+    }
+
+    // state == 1 : pull-over complete!
+    state = 0;
+    clock_gettime(CLOCK_REALTIME, &pull_over_end_time);
+    took_time = TIMESPECDIFF_SEC(pull_over_opt_time, pull_over_start_time) +
+                TIMESPECDIFF_NSEC(pull_over_opt_time, pull_over_start_time);
+    took_time = took_time / NSEC_PER_SEC;
+
+    cout << "pullover took " << took_time
+         << " seconds" << endl;
+    return true;
+  }
+
+  bool self_test(void)
+  {
+    static int state = 0;
+
+    if (state == 0)
+    { // initial state
+      emergency_stop();
+      state = 1;
+      return false;
+    }
+
+    else if (state == 1)
+    {
+      if (does_pedal_decel_reach_upper())
+        return false;
+
+      state = 2;
+      return false;
+    }
+
+    else if (state == 2)
+    {
+      if (!calibrate_steer_wheel())
+        return false;
+
+      move_gear_stick_to_drive();
+      state = 3;
+      return false;
+    }
+
+    else if (state == 3)
+    {
+      if (!does_gear_stick_reach_goal())
+        return false;
+
+      state = 0;
+      return true;
+    }
+
+    cout << "selftest : unknown internal state!!!" << endl;
+    return false;
+  }
+
+  enum pedal_type
+  {
+    PEDAL_ACCEL,
+    PEDAL_DECEL
+  };
+
+  int pedal_selected = PEDAL_ACCEL;
+  double cc_target_velocity = 0;
+  double reference_velocity = 0;
+  double curr_ref_err;
+  double prev_ref_err;
+  double accu_ref_err;
+
+  void reset_cruise_control(void)
+  {
+    pedal_selected = PEDAL_ACCEL;
+    curr_ref_err = 0;
+    prev_ref_err = 0;
+    accu_ref_err = 0;
+    reference_velocity = 0;
+    cc_target_velocity = 0;
+  }
+
+  double estimate_pedal_position(double actual_velocity)
+  {
+    static bool pedal_switched = false;
+    static bool decel_needed = true;
+    static double prev_actual_velocity = 0;
+    static double kp, ki, kd; // int -> double
+    static double latest_velocities[4] = {0};
+    static int num_latest_velo = 0;
+    static int converge_towards_ref = 0;
+    static double prev_tgt_err = 0;
+    static double curr_tgt_err = 0;
+    // double actual_velocity;
+    // int timestamp;
+    double target_velocity;
+    double p_margin, n_margin;
+    double Kp_term, Ki_term, Kd_term, output;
+
+    // get_vehicle_velocity(actual_velocity, timestamp);
+    actual_velocity = (actual_velocity > 255 ? prev_actual_velocity : actual_velocity);
+    prev_actual_velocity = actual_velocity;
+
+    // positive margin used to switch from PEDAL_ACCEL to PEDAL_DECEL
+    get_cc_switch_margins(p_margin, n_margin);
+    p_margin = (actual_velocity * p_margin / 1000.0);
+    p_margin = (p_margin < 3 ? 3 : p_margin);
+
+    // negative margin used to switch from PEDAL_DECEL to PEDAL_ACCEL
+    n_margin = (actual_velocity * n_margin / 1000.0);
+    n_margin = (n_margin < 3 ? 3 : n_margin);
+
+    // get the target velocity
+    get_state_var_value("cc_target_velocity", target_velocity); //kmph
+    cc_target_velocity = target_velocity;
+    reference_velocity = actual_velocity;
+    decel_needed = (actual_velocity > target_velocity + p_margin ? true : false);
+
+    if(decel_needed)
+    {
+      pedal_selected = PEDAL_DECEL;
+      reference_velocity = cc_target_velocity;
+    }
+
+    else
+    {
+      pedal_selected = PEDAL_ACCEL;
+
+      if (actual_velocity < cc_target_velocity - 10.0)
+        reference_velocity = actual_velocity + 7;
+
+      else if(actual_velocity < cc_target_velocity - 3)
+        reference_velocity = actual_velocity + 3;
+
+      else
+        reference_velocity = cc_target_velocity;
+    }
+
+#if 1
+    // calculate errors
+    prev_tgt_err = curr_tgt_err;
+    curr_tgt_err = cc_target_velocity - actual_velocity;
+    curr_ref_err = reference_velocity - actual_velocity;
+
+#endif
+
+    switch (pedal_selected)
+    {
+    case PEDAL_ACCEL:
+      get_accel_gains(kp, ki, kd);
+      if (pedal_switched)
+      {
+        if (actual_velocity < reference_velocity)
+        {
+          latest_velocities[num_latest_velo] = actual_velocity;
+          ++num_latest_velo;
+
+          if (num_latest_velo > 3)
+          {
+            if (latest_velocities[0] >= latest_velocities[3])
+            {
+              double base, step;
+              get_cc_integral_base(base, step);
+              accu_ref_err = (base + step * (latest_velocities[0] - latest_velocities[3])) / ki;
+            }
+
+            pedal_switched = false;
+            num_latest_velo = 0;
+          }
+        }
+
+        else
+        {
+          num_latest_velo = 0;
+          pedal_switched = false;
+        }
+      }
+
+      if (actual_velocity <= reference_velocity + p_margin)
+      {
+        converge_towards_ref = 0;
+      }
+
+      else
+      {
+          if (fabs(curr_tgt_err) > fabs(prev_tgt_err)) //far from reference
+          {
+            converge_towards_ref++;
+          }
+          else  //go to reference
+          {
+            if (!converge_towards_ref)
+            {
+              converge_towards_ref--;
+            }
+          }
+
+          if (converge_towards_ref > 4)
+          {
+            converge_towards_ref = 0;
+            pedal_selected = PEDAL_DECEL;
+            accu_ref_err = 0;
+            prev_ref_err = 0;
+            converge_towards_ref = 0;
+            //get_decel_gains(kp, ki, kd);
+          }
+      }
+      break;
+
+    case PEDAL_DECEL:
+      get_decel_gains(kp, ki, kd);
+
+      if (actual_velocity >= reference_velocity - n_margin)
+      {
+        converge_towards_ref = 0;
+      }
+
+      else
+      {
+        if (fabs(curr_tgt_err) > fabs(prev_tgt_err)) //far from reference
+        {
+          converge_towards_ref++;
+        }
+
+        else
+        {
+          if (!converge_towards_ref)
+          {
+            converge_towards_ref--;
+          }
+        }
+
+        if (converge_towards_ref > 3)
+        {
+          converge_towards_ref = 0;
+          pedal_switched = true;
+          pedal_selected = PEDAL_ACCEL;
+          accu_ref_err = 0;
+          prev_ref_err = 0;
+          converge_towards_ref = 0;
+          //get_accel_gains(kp, ki, kd);
+        }
+      }
+      break;
+    }
+
+    cout << "curr_ref_err : " << curr_ref_err << endl;
+    cout << "curr_tgt_err : " << curr_tgt_err << endl;
+    accu_ref_err += curr_ref_err;
+  
+    // calculate the magnitude of control signal, that is, pedal position!
+    Kp_term = kp * curr_ref_err;
+    Ki_term = ki * accu_ref_err;
+    Kd_term = kd * (curr_ref_err - prev_ref_err);
+    output = Kp_term + Ki_term + Kd_term;
+
+    prev_ref_err = curr_ref_err; 
+    return output;
+  }
+
+  bool cruise_control(void)
+  {
+    static int prev_velo_timestamp = 0;
+    static int trial = 0;
+
+    double velo, target_velo, pos, step;
+    int timestamp;
+
+    get_state_var_value("cc_target_velocity", target_velo);
+
+    get_vehicle_velocity(velo, timestamp);
+
+    if (prev_velo_timestamp == timestamp) 
+    {
+      trial++;
+      if(trial > MAXIMUM_VELOCITY_UPDATE_COUNT)
+      {
+        cout<<"velocity is not updated pull over exit!"<<endl;
+        return true;
+      }
+      return false;
+    }
+
+    trial = 0;
+    prev_velo_timestamp = timestamp;
+
+    // cout << "<debug> current velo : " << velo << endl;
+    // cout << "<debug> target velo  : " << target_velo << endl;
+
+    pos = estimate_pedal_position(velo);
+
+    if (pedal_selected == PEDAL_ACCEL)
+    {
+      get_state_var_step("pedal_accel_pos", step);
+      pos = pos / step;
+      move_pedal_accel(pos); // must be virtual position
+    }
+
+    else
+    { // (pedal_selected == PEDAL_DECEL)
+      get_state_var_step("pedal_decel_pos", step);
+      pos = pos / step;
+      move_pedal_decel(-pos); // must be virtual position
+    }
+
+    return false; // cruise-control in progress
+  }
+
+  double get_steering_angle(void)
+  {
+    double omega;
+    double v;
+    double radius;
+    double wheel_base;
+    double min_radius;
+
+    get_state_var_lower("sc_vehicle_geometry", min_radius);
+    get_state_var_upper("sc_vehicle_geometry", wheel_base);
+    get_state_var_value("sc_target_anglvelo", omega);
+    get_state_var_value("cc_target_velocity", v);
+
+    v = kmph2mps(v);
+
+    if (omega == 0 || v == 0)
+      return 0.0;
+
+    radius = v / omega;
+
+    if (radius < min_radius && radius > 0)
+      radius = min_radius;
+    else if (radius > -min_radius && radius < 0)
+      radius = -min_radius;
+
+    return atan(wheel_base / radius);
+  }
+
+  bool steer_control(void)
+  {
+    double steering_angle, vpos, pos_per_deg;
+
+    get_state_var_origin("sc_vehicle_geometry", pos_per_deg);
+
+    steering_angle = get_steering_angle();
+    vpos = steering_angle * pos_per_deg;
+    move_steer_wheel(vpos);
+
+    return true;
+  }
+
+  enum MOTION_STATE
+  {
+    INITIAL_STATE,
+    STANDBY_STATE,
+    HOMING_STATE,
+    ESTOP_STATE,
+    CALIBRATE_STATE,
+    PULLOVER_STATE,
+    SELFTEST_STATE,
+    CRUISE_STATE,
+    AUTO_STATE,
+    AVC_STATE,
+    GOAL_LINE_STATE,
+    READY2DRIVE_STATE,
+    STOPPING_STATE,
+    MOTION_STATE_NUM
+  };
+
+  void run_controller(void)
+  { // called when ecat_state == 2.
+    double value;
+
+    MOTION_STATE motion_state;
+
+    get_state_var_value("motion_state", value);
+
+    motion_state = (MOTION_STATE)value; // type-cast is necessary
+
+    if (motion_state == INITIAL_STATE)
+    {
+      //do_nothing
+    }
+
+    else if (motion_state == STANDBY_STATE)
+    {
+      stand_by();
+    }
+
+    else if (motion_state == HOMING_STATE)
+    {
+      homing_pedals();
+    }
+
+    else if (motion_state == ESTOP_STATE)
+    {
+      emergency_stop();
+    }
+
+    else if (motion_state == CALIBRATE_STATE)
+    {
+      if (calibrate_steer_wheel())
+        set_state_var("motion_state", READY2DRIVE_STATE);
+    }
+
+    else if (motion_state == PULLOVER_STATE)
+    {
+      if (pull_over())
+        set_state_var("motion_state", STANDBY_STATE);
+    }
+
+    else if (motion_state == SELFTEST_STATE)
+    {
+      if (self_test())
+        set_state_var("motion_state", STANDBY_STATE);
+    }
+
+    else if (motion_state == CRUISE_STATE)
+    {
+
+      if (cruise_control())
+      {
+        set_state_var("velocity_update", 1);
+        set_state_var("motion_state", STANDBY_STATE);
+      }
+    }
+
+    else if (motion_state == AUTO_STATE)
+    {
+      steer_control(); // added by khkim on 20200122
+      if (cruise_control())
+      {
+        set_state_var("velocity_update", 1);
+        set_state_var("motion_state", STANDBY_STATE);
+      }
+    }
+
+    else if (motion_state == AVC_STATE)
+    {
+      double vel;
+      get_state_var_value("cc_target_velocity", vel);
+
+      if (vel < 0)
+        emergency_stop();
+      // the following code should not be used
+      // because autoware can generate a velocity of -1
+      // in the middle of driving, which does not mean estop!
+
+      else
+      { // vel >= 0
+        steer_control();
+        if (cruise_control())
+        {
+          set_state_var("velocity_update", 1);
+          set_state_var("motion_state", STANDBY_STATE);
+        }
+      }
+    }
+
+    else if (motion_state == READY2DRIVE_STATE)
+    {
+      //
+    }
+
+
+    else
+    {
+      cout << "motion: unknown motion state" << endl;
+      set_state_var("motion_state", STANDBY_STATE);
+    }
+  }
+} // namespace ichthus_controller
